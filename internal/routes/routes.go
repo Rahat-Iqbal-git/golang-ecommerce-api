@@ -13,6 +13,9 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 
 	r.GET("/health", handlers.HealthCheck)
 
+	auth := handlers.NewAuthHandler(db)
+	r.POST("/api/v1/register", auth.Register)
+
 	api := r.Group("/api/v1")
 	api.Use(middleware.AuthRequired(cfg.JWTSecret))
 	{
