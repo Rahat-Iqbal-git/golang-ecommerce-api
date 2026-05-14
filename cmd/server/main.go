@@ -5,6 +5,7 @@ import (
 
 	"github.com/rahat-iqbal/ecommerce-api/internal/config"
 	"github.com/rahat-iqbal/ecommerce-api/internal/database"
+	"github.com/rahat-iqbal/ecommerce-api/internal/models"
 	"github.com/rahat-iqbal/ecommerce-api/internal/routes"
 )
 
@@ -18,6 +19,10 @@ func main() {
 		log.Fatal("failed to connect to database:", err)
 	}
 	log.Println("database connected")
+
+	if err := db.AutoMigrate(&models.User{}, &models.Product{}); err != nil {
+		log.Fatal("migration failed:", err)
+	}
 
 	router := routes.Setup(cfg, db)
 
