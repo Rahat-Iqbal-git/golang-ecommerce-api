@@ -1,0 +1,77 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+ecommerce-api
+**/ecommerce-api       # In case built in subdirs
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.txt
+cover.out
+
+# Dependency directories
+vendor/
+
+# Go workspace
+go.work
+go.work.sum
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# OS generated files
+ehthumbs.db
+Desktop.ini
+
+# Database & local data
+*.db
+*.sqlite
+data/
+postgres-data/
+pgdata/
+
+# Docker
+.docker/
+*.dockerignore.bak
+
+# Build output directories
+dist/
+build/
+out/
+
+# Profiling & debugging
+*.pprof
+*.prof
+
+# Air / Live reload
+.tmp/
+air/
+
+# Documentation temporary files
+*.pdf
