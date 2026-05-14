@@ -5,9 +5,10 @@ import (
 	"github.com/rahat-iqbal/ecommerce-api/internal/config"
 	"github.com/rahat-iqbal/ecommerce-api/internal/handlers"
 	"github.com/rahat-iqbal/ecommerce-api/internal/middleware"
+	"gorm.io/gorm"
 )
 
-func Setup(cfg *config.Config) *gin.Engine {
+func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 	r := gin.Default()
 
 	r.GET("/health", handlers.HealthCheck)

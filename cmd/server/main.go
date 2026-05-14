@@ -3,17 +3,23 @@ package main
 import (
 	"log"
 
-	// "github.com/joho/godotenv"
 	"github.com/rahat-iqbal/ecommerce-api/internal/config"
+	"github.com/rahat-iqbal/ecommerce-api/internal/database"
 	"github.com/rahat-iqbal/ecommerce-api/internal/routes"
 )
 
 func main() {
-	// _ = godotenv.Load() // loads .env if present; ignored in production where env vars are set directly
+	// _ = godotenv.Load() // loads .env if present; ignored in production
 
 	cfg := config.Load()
 
-	router := routes.Setup(cfg)
+	db, err := database.Connect(cfg.DBUrl)
+	if err != nil {
+		log.Fatal("failed to connect to database:", err)
+	}
+	log.Println("database connected")
+
+	router := routes.Setup(cfg, db)
 
 	log.Printf("server starting on :%s", cfg.Port)
 	if err := router.Run(":" + cfg.Port); err != nil {
