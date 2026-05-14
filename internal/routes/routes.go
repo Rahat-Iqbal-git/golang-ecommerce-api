@@ -20,7 +20,12 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 	api := r.Group("/api/v1")
 	api.Use(middleware.AuthRequired(cfg.JWTSecret))
 	{
-		// protected routes go here
+		products := handlers.NewProductHandler(db)
+		api.GET("/products", products.List)
+		api.GET("/products/:id", products.Get)
+		api.POST("/products", products.Create)
+		api.PUT("/products/:id", products.Update)
+		api.DELETE("/products/:id", products.Delete)
 	}
 
 	return r
