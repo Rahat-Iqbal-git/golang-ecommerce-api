@@ -1,20 +1,21 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/rahat-iqbal/ecommerce-api/internal/models"
-	"gorm.io/gorm"
+	"github.com/rahat-iqbal/ecommerce-api/internal/service"
 )
 
 type CartHandler struct {
-	db *gorm.DB
+	svc service.CartService
 }
 
-func NewCartHandler(db *gorm.DB) *CartHandler {
-	return &CartHandler{db: db}
+func NewCartHandler(svc service.CartService) *CartHandler {
+	return &CartHandler{svc: svc}
 }
 
 func userIDFromContext(c *gin.Context) (uint, bool) {
@@ -31,6 +32,15 @@ func userIDFromContext(c *gin.Context) (uint, bool) {
 		return 0, false
 	}
 	return uint(sub), true
+}
+
+func parseID(c *gin.Context) (uint, bool) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return 0, false
+	}
+	return uint(id), true
 }
 
 type addToCartRequest struct {
@@ -51,45 +61,19 @@ func (h *CartHandler) AddItem(c *gin.Context) {
 		return
 	}
 
-	var product models.Product
-	if err := h.db.First(&product, req.ProductID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not fetch product"})
-		return
-	}
-
-	if product.Stock < req.Quantity {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "insufficient stock"})
-		return
-	}
-
-	var item models.CartItem
-	err := h.db.Where("user_id = ? AND product_id = ?", userID, req.ProductID).First(&item).Error
-	if err == nil {
-		item.Quantity += req.Quantity
-		if err := h.db.Save(&item).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not update cart"})
-			return
-		}
-	} else if err == gorm.ErrRecordNotFound {
-		item = models.CartItem{
-			UserID:    userID,
-			ProductID: req.ProductID,
-			Quantity:  req.Quantity,
-		}
-		if err := h.db.Create(&item).Error; err != nil {
+	item, err := h.svc.AddItem(userID, req.ProductID, req.Quantity)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrProductNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		case errors.Is(err, service.ErrInsufficientStock):
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not add to cart"})
-			return
 		}
-	} else {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not check cart"})
 		return
 	}
 
-	h.db.Preload("Product").First(&item, item.ID)
 	c.JSON(http.StatusOK, item)
 }
 
@@ -100,8 +84,8 @@ func (h *CartHandler) ListItems(c *gin.Context) {
 		return
 	}
 
-	var items []models.CartItem
-	if err := h.db.Preload("Product").Where("user_id = ?", userID).Find(&items).Error; err != nil {
+	items, err := h.svc.ListItems(userID)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not fetch cart"})
 		return
 	}
@@ -119,13 +103,8 @@ func (h *CartHandler) UpdateItem(c *gin.Context) {
 		return
 	}
 
-	var item models.CartItem
-	if err := h.db.Where("id = ? AND user_id = ?", c.Param("id"), userID).First(&item).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "cart item not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not fetch cart item"})
+	id, ok := parseID(c)
+	if !ok {
 		return
 	}
 
@@ -135,13 +114,16 @@ func (h *CartHandler) UpdateItem(c *gin.Context) {
 		return
 	}
 
-	item.Quantity = req.Quantity
-	if err := h.db.Save(&item).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not update cart item"})
+	item, err := h.svc.UpdateItem(id, userID, req.Quantity)
+	if err != nil {
+		if errors.Is(err, service.ErrCartItemNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not update cart item"})
+		}
 		return
 	}
 
-	h.db.Preload("Product").First(&item, item.ID)
 	c.JSON(http.StatusOK, item)
 }
 
@@ -152,19 +134,19 @@ func (h *CartHandler) RemoveItem(c *gin.Context) {
 		return
 	}
 
-	var item models.CartItem
-	if err := h.db.Where("id = ? AND user_id = ?", c.Param("id"), userID).First(&item).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "cart item not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not fetch cart item"})
+	id, ok := parseID(c)
+	if !ok {
 		return
 	}
 
-	if err := h.db.Delete(&item).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not remove cart item"})
+	if err := h.svc.RemoveItem(id, userID); err != nil {
+		if errors.Is(err, service.ErrCartItemNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not remove cart item"})
+		}
 		return
 	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "item removed"})
 }
