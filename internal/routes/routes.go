@@ -5,6 +5,8 @@ import (
 	"github.com/rahat-iqbal/ecommerce-api/internal/config"
 	"github.com/rahat-iqbal/ecommerce-api/internal/handlers"
 	"github.com/rahat-iqbal/ecommerce-api/internal/middleware"
+	"github.com/rahat-iqbal/ecommerce-api/internal/repository"
+	"github.com/rahat-iqbal/ecommerce-api/internal/service"
 	"gorm.io/gorm"
 )
 
@@ -27,7 +29,12 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 		api.PUT("/products/:id", products.Update)
 		api.DELETE("/products/:id", products.Delete)
 
-		cart := handlers.NewCartHandler(db)
+		cart := handlers.NewCartHandler(
+			service.NewCartService(
+				repository.NewCartRepository(db),
+				repository.NewProductRepository(db),
+			),
+		)
 		api.GET("/cart", cart.ListItems)
 		api.POST("/cart", cart.AddItem)
 		api.PUT("/cart/:id", cart.UpdateItem)
