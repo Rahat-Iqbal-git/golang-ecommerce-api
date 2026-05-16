@@ -26,6 +26,12 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 		api.POST("/products", products.Create)
 		api.PUT("/products/:id", products.Update)
 		api.DELETE("/products/:id", products.Delete)
+
+		cart := handlers.NewCartHandler(db)
+		api.GET("/cart", cart.ListItems)
+		api.POST("/cart", cart.AddItem)
+		api.PUT("/cart/:id", cart.UpdateItem)
+		api.DELETE("/cart/:id", cart.RemoveItem)
 	}
 
 	return r

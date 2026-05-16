@@ -26,3 +26,11 @@ type Product struct {
 	Price       float64 `json:"price" gorm:"not null"`
 	Stock       int     `json:"stock" gorm:"default:0"`
 }
+
+type CartItem struct {
+	Base
+	UserID    uint    `json:"user_id" gorm:"not null;index"`
+	ProductID uint    `json:"product_id" gorm:"not null"`
+	Quantity  int     `json:"quantity" gorm:"not null;default:1"`
+	Product   Product `json:"product" gorm:"foreignKey:ProductID"`
+}

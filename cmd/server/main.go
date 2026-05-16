@@ -20,7 +20,7 @@ func main() {
 	}
 	log.Println("database connected")
 
-	if err := db.AutoMigrate(&models.User{}, &models.Product{}); err != nil {
+	if err := db.AutoMigrate(&models.User{}, &models.Product{}, &models.CartItem{}); err != nil {
 		log.Fatal("migration failed:", err)
 	}
 
